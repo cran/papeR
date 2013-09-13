@@ -1,4 +1,61 @@
 ------------------------------------------------------------------------
+r40 | hofner | 2013-09-13 10:52:37 +0200 (Fr, 13. Sep 2013) | 5 Zeilen
+
+release papeR 0.4-0
+- added .Rbuildignore
+- minor changes in tests and examples
+- updated release SOPs
+
+------------------------------------------------------------------------
+r39 | hofner | 2013-09-12 17:06:37 +0200 (Do, 12. Sep 2013) | 2 Zeilen
+
+added helper script for package preparation
+
+------------------------------------------------------------------------
+r38 | hofner | 2013-09-12 17:06:03 +0200 (Do, 12. Sep 2013) | 5 Zeilen
+
+- make lme4 >= 1.0 happy
+- minor bugfixes 
+- changes in NAMESPACE and imports
+- added .Rout.save files
+
+------------------------------------------------------------------------
+r37 | hofner | 2013-09-05 11:51:13 +0200 (Do, 05. Sep 2013) | 4 Zeilen
+
+- included better handling of environments in prettify functions
+  and checks if the data has changed
+- added SOPs for releasing package
+
+------------------------------------------------------------------------
+r36 | hofner | 2013-09-03 19:19:30 +0200 (Di, 03. Sep 2013) | 8 Zeilen
+
+- better guessing and handling of environments for model refitting
+- experimental version of environments for coxph and lmer models
+- users can now specify confidence intervals directly via confint, e.g. 
+    prettify(summary(mod), confint = confint(mod))
+  This helps to in case of environment problems. 
+  In this case, labels should also be user-specified!
+- added first tests
+
+------------------------------------------------------------------------
+r35 | hofner | 2013-08-09 10:09:35 +0200 (Fr, 09. Aug 2013) | 4 Zeilen
+
+- updated news file with missing items (for version 0.3)
+- included (experimental) version of prettify.summary.merMod
+  to make lme4 (>= 1.0.0) happy
+
+------------------------------------------------------------------------
+r34 | hofner | 2013-08-07 17:11:09 +0200 (Mi, 07. Aug 2013) | 8 Zeilen
+
+- improvement/bugfix in rbind.labeled.data.frame()
+- bugfix in is.labeled.data.frame()
+- improvement of toLatex.sessionInfo()
+- numerous improvements in manuals
+- added missing items to NAMESPACE
+
+- Now really push release to CRAN
+
+------------------------------------------------------------------------
 r33 | hofner | 2013-08-06 16:42:28 +0200 (Di, 06. Aug 2013) | 2 Zeilen
 
 release 0.3 to CRAN
@@ -198,8 +255,4 @@ r2 | hofner | 2013-01-21 14:48:17 +0100 (Mo, 21. Jan 2013) | 2 Zeilen
 
 initialization
 
-------------------------------------------------------------------------
-r1 | stefan7th | 2011-09-15 17:26:09 +0200 (Do, 15. Sep 2011) | 1 Zeile
-
-small themeroot fix
 ------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 \alias{prettify.summary.coxph}
 \alias{prettify.summary.lme}
 \alias{prettify.summary.mer}
+\alias{prettify.summary.merMod}
 \alias{prettifyPValue}
 
 \title{Make Pretty Summary and Anova Tables}
@@ -35,18 +36,27 @@
 \method{prettify}{summary.coxph}(object, labels = NULL, sep = ": ", extra.column = FALSE,
          confint = TRUE, level = 0.95, HR = TRUE,
          smallest.pval = 0.001, digits = NULL, scientific = FALSE,
-         signif.stars = getOption("show.signif.stars"), ...)
+         signif.stars = getOption("show.signif.stars"),
+         env = parent.frame(), ...)
 
 \method{prettify}{summary.lme}(object, labels = NULL, sep = ": ", extra.column = FALSE,
          confint = TRUE, level = 0.95,
          smallest.pval = 0.001, digits = NULL, scientific = FALSE,
          signif.stars = getOption("show.signif.stars"), ...)
 
+## method for mixed models fitted with lme4 (vers. < 1.0)
 \method{prettify}{summary.mer}(object, labels = NULL, sep = ": ", extra.column = FALSE,
          confint = TRUE, level = 0.95,
          smallest.pval = 0.001, digits = NULL, scientific = FALSE,
          signif.stars = getOption("show.signif.stars"),
          simulate = c("ifneeded", TRUE, FALSE), B = 1000, ...)
+
+## method for mixed models fitted with lme4 (vers. >= 1.0)
+\method{prettify}{summary.merMod}(object, labels = NULL, sep = ": ", extra.column = FALSE,
+         confint = TRUE, level = 0.95,
+         smallest.pval = 0.001, digits = NULL, scientific = FALSE,
+         signif.stars = getOption("show.signif.stars"),
+         method = c("profile", "Wald", "boot"), B = 1000, env = parent.frame(), ...)
 
 \method{prettify}{anova}(object, labels,
          smallest.pval = 0.001, digits = NULL, scientific = FALSE,
@@ -76,7 +86,12 @@ prettifyPValue(object, smallest.pval = 0.001, digits = NULL,
     (default: \code{FALSE}).
   }
   \item{confint}{
-    logical. Should confidence intervals be added?
+    logical value indicating if confidence intervals sould be added or
+    the confidence intervals themself.
+
+    Using \code{confint = TRUE} is experimental only and special care
+    needs to be taken that the data set used for fitting is neither
+    changed nor deleted. See \sQuote{Details} and \sQuote{Examples}.
   }
   \item{level}{
     confidence level; Per default 0.95\% confidence
@@ -117,8 +132,18 @@ prettifyPValue(object, smallest.pval = 0.001, digits = NULL,
     number of samples to take in \code{\link{mcmcsamp}}. See
     \code{\link{confint.mer}} for details.
   }
+  \item{method}{
+    Determines the method for computing confidence intervals; One of
+    \code{"profile"} (default), \code{"Wald"}, \code{"boot"}. For
+    details see \code{confint.merMod} in package \pkg{lme4}.
+  }
   \item{\dots}{
     further options. Currently not applicable.
+  }
+  \item{env}{
+    specify environment in which the model was fitted. Needed to find
+    the correct data for refitting the model in order to obtain
+    confidence intervals.
   }
 }
 \details{
@@ -134,7 +159,18 @@ prettifyPValue(object, smallest.pval = 0.001, digits = NULL,
   functions then use \code{\link{confint}} on the refitted model. For
   \code{lme} and \code{mer} models special
   \code{\link[=confint.mer]{confint}} functions are defined in this
-  package. For details see there.
+  package. For details see there. Note that is it highly important
+  \bold{not} to modify or delete the data in the fitting environment if
+  one wants to obtain correct confidence intervals. See examples for what
+  might happen. We try ourt best to find changes of the data and to warn
+  the user (but without any warranty).
+
+  Alternatively, one can directly specify the confidence intervals using
+  e.g. \code{confint = confint(model)}, where \code{model} is the fitted
+  model. This does not rely on refitting of the model and should always
+  work as expected. In this case, arguments \code{level},
+  \code{simulate} and \code{B} are ignored. Note that in this case it is
+  adviced to also specify the labels by hand!
 
   \code{prettifyPValue} is a helper function used within the prettify
   functions but can also be used directly on a \code{data.frame} object.
@@ -157,8 +193,8 @@ prettifyPValue(object, smallest.pval = 0.001, digits = NULL,
 \seealso{
   \code{\link{summary}}, \code{\link{summary.lm}},
   \code{\link{summary.glm}}, \code{\link{summary.lme}},
-  \code{\link[=summary.mer-class]{summary.mer}} and \code{\link{summary.coxph}}
-  for summary functions.
+  \code{summary.merMod} (or \code{summary.mer-class} in lme4 < 1.0)
+  and \code{\link{summary.coxph}} for summary functions.
 
   \code{\link{anova}} and \code{\link{Anova}} for ANOVA functions.
 
@@ -203,6 +239,8 @@ prettify(summary(mod), confint = FALSE)
 # Random effects model (lme4)
 ######################################################################
 
+set.seed(130913)
+
 ## With package lme4:
 require("lme4")
 ## Fit a model for distance with random intercept for Subject
@@ -216,9 +254,9 @@ prettify(anova(mod4))
 
 ## Better: extract Anova (partial instead of sequential tests)
 library("car")
-Anova(mod4)
+try(Anova(mod4))  ## doesn't currently work with lme4 >= vers. 1.0.0
 ## now prettify it
-prettify(Anova(mod4))
+try(prettify(Anova(mod4))) ## doesn't currently work with lme4 >= vers. 1.0.0
 
 ######################################################################
 # Cox model
@@ -236,6 +274,44 @@ prettify(summary(mod5))
 
 ## Make pretty summary
 prettify(Anova(mod5))
+
+
+
+######################################################################
+# ATTENTION when confint = TRUE: Do not modify or delete data
+######################################################################
+
+## Fit a linear model (same as above)
+linmod <- lm(distance ~ age + Sex, data = Orthodont)
+## Extract pretty summary
+prettify(summary(linmod))
+
+## Change the data (age in month instead of years)
+Orthodont$age <- Orthodont$age * 12
+prettify(summary(linmod))  ## confidence intervals for age have changed
+                           ## but coefficients stayed the same; a
+                           ## warning is issued
+
+## Remove data in fitting environment
+rm(Orthodont)
+prettify(summary(linmod))  ## confidence intervals are missing as no
+                           ## data set was available to refit the model
+
+
+
+######################################################################
+# Use confint to specify confidence interval without refitting
+######################################################################
+
+## make labels without using the data set
+labels <- c("distance", "age", "Subject", "Sex")
+names(labels) <- labels
+
+## usually easier via: labels(Orthodont)
+
+prettify(summary(linmod), confint = confint(linmod),
+         labels = labels)
+
 }
 
 \keyword{methods}
