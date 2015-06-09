@@ -1,5 +1,58 @@
 \name{NEWS}
 \title{News for Package 'papeR'}
+
+\section{Changes in papeR version 0.6-1 (2015-06-09)}{
+  \subsection{Miscellaneous}{
+    \itemize{
+      \item Fixed \file{man/toLatex.Rd}:
+      Changed \code{\\donttest} to \code{\\dontrun}
+      \item \file{DESCRIPTION} now uses single quotes for package and
+      software names.
+    }
+  }
+  \subsection{Bug-fixes}{
+    \itemize{
+      \item Fixed \file{inst/CITATION}: Now it is possible to extract
+      citation without the need to install the package.
+    }
+  }  
+}
+
+\section{Changes in papeR version 0.6-0 (2015-06-05)}{
+    \subsection{User-visible changes}{
+      \itemize{
+	\item \code{latex.table.fac}:
+	\itemize{
+	  \item Allow more than two groups.
+	  \item Added p-values.
+	  \item Added option to display fractions or percentages
+	  (\code{percent = TRUE}). The latter is the default.
+	  \item Changed default to \code{digits = 3}.
+	  \item Generally improved display of grouped statistics.
+	}
+     }
+  }
+  \subsection{Miscellaneous}{
+    \itemize{
+      \item Added \file{inst/CITATION} file.
+      \item Added \file{inst/COPYRIGHTS} file.
+      \item Added \file{inst/CONTRIBUTIONS} file.
+      \item Updated \file{DESCRIPTION} to reflect CRAN policies.
+      \item Changed URL in \file{DESCRIPTION} to
+      \url{http://github.com/hofnerb/papeR}.
+    }
+  }
+  \subsection{Bug-fixes}{
+    \itemize{
+      \item Do not replace registered S3 methods from base/recommended
+      packages (#5).     
+      \item Fixed handling of \code{levels()}.
+      \item Fixed bug with factor levels.
+      \item \code{latex.table.fac} and  \code{latex.table.cont}:
+      fixed handling of missing values in \code{group}.
+    }
+  }
+}
 \section{Changes in papeR version 0.5-0 (2014-11-13)}{
     \subsection{User-visible changes}{
       \itemize{

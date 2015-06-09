@@ -1,16 +1,13 @@
 ################################################################################
 ##  Author: Benjamin Hofner, benjamin.hofner@fau.de
 
-### for package testing:
-# pkgEnv <- getNamespace("papeR")
-# attach(pkgEnv)
-
-
 ################################################################################
 # LaTeX Tables with Descriptves for Continuous Variables
 latex.table.cont <- function(data, variables = names(data),
                              labels = NULL, group = NULL,
+                             test = TRUE,
                              colnames = NULL, digits = 2,
+                             digits.pval = 3, smallest.pval = 0.001,
                              table = c("tabular", "longtable"), align = NULL,
                              caption = NULL, label = NULL, floating = FALSE,
                              center = TRUE, sep = !is.null(group),
@@ -39,6 +36,11 @@ latex.table.cont <- function(data, variables = names(data),
             idx <- variables != group
             variables <- variables[idx]
             labels <- labels[idx]
+        }
+        ## remove observations with missing group:
+        if (any(is.na(data[, group]))) {
+            warning("Removed observations with missing group")
+            data <- data[!is.na(data[, group]), ]
         }
         group_var <- data[, group]
     }
@@ -105,6 +107,31 @@ latex.table.cont <- function(data, variables = names(data),
         sums$Max[i] <- Q[5]
     }
 
+    if (!is.null(group)) {
+        if (!is.character(test) && test)
+            test <- "t.test"
+
+        if (all(is.character(test))) {
+            if (length(test) == 1)
+                test <- rep(test, length(variables))
+
+            pval <- rep(NA, length(variables))
+            for (i in 1:length(variables)) {
+                fm <- as.formula(paste(variables[i], " ~ ", group))
+                pval[i] <- do.call(test[i], list(formula = fm, data = data))$p.value
+            }
+            ## make sure rounding is to digits.pval digits
+            pval <- format.pval(round(pval, digits = digits.pval),
+                                eps = smallest.pval)
+            ## make sure not to drop trailing zeros
+            pval2 <- suppressWarnings(as.numeric(pval))
+            pval[is.na(pval2)] <- sprintf(paste0("%0.", digits.pval, "f"),
+                                          pval2[is.na(pval2)])
+            sums$blank_p <- ""
+            sums$p.value[!duplicated(sums$var)] <- pval
+        }
+    }
+
     ## remove superfluous variables
     sums$var <- NULL
     if (!show.NAs) {
@@ -125,8 +152,10 @@ latex.table.cont <- function(data, variables = names(data),
 # LaTeX Tables with Descriptves for Factor Variables
 latex.table.fac <- function(data, variables = names(data),
                             labels = NULL, group = NULL,
-                            colnames = NULL, digits = 2,
+                            test = TRUE, colnames = NULL, digits = 3,
+                            digits.pval = 3, smallest.pval = 0.001,
                             table = c("tabular", "longtable"),
+                            percent = TRUE, cumulative = FALSE,
                             align = NULL,
                             caption = NULL, label = NULL, floating = FALSE,
                             center = TRUE,
@@ -134,46 +163,6 @@ latex.table.fac <- function(data, variables = names(data),
                             drop = TRUE,
                             show.NAs = any(is.na(data[, variables])),
                             na.lab = "<Missing>") {
-
-    if (!is.null(group)) {
-        if(!is.factor(data[, group]))
-            stop(sQuote("group"), " must be a factor variable")
-        if (group %in% variables) {
-            idx <- variables != group
-            variables <- variables[idx]
-            labels <- labels[idx]
-        }
-        group_var <- data[, group]
-
-        cl <- match.call()
-        cl[["group"]] <- NULL
-        print_single_tabs <- function(level, data, grp_var) {
-            dat <- data[grp_var == level, ]
-            cl[["data"]] <- dat
-            cl[["caption"]] <- paste(caption, " (", group , ": ", level, ")",
-                                     sep ="")
-            if (!is.null(label))
-                cl[["label"]] <- paste(label, level, sep = "_")
-            eval(cl)
-        }
-        res <- lapply(levels(group_var), print_single_tabs,
-                      data = data, grp_var = group_var)
-        class(res) <- "table.list"
-        return(res)
-    }
-
-    table <- match.arg(table)
-    if (is.null(labels)) {
-        labels <- variables
-    } else {
-        if (is.logical(labels) && labels) {
-            labels <- labels(data, which = variables)
-        } else {
-            if (length(variables) != length(labels))
-                stop(sQuote("variables"), " and ", sQuote("labels"),
-                     " must have the same length")
-        }
-    }
 
     ## get factors
     fac <- mySapply(data[, variables], is.factor)
@@ -196,19 +185,96 @@ latex.table.fac <- function(data, variables = names(data),
 
     if (show.NAs) {
         ## convert NAs to factor levels
-        NAtoLvl <- function(x){
-            if (any(is.na(x))) {
-                lvls <- levels(x)
-                x <- as.character(x)
-                x[is.na(x)] <- na.lab
-                return(factor(x, levels = c(lvls, na.lab)))
-            }
-            return(x)
-        }
         if (length(variables) > 1) {
-            data[, variables] <- as.data.frame(lapply(data[, variables], NAtoLvl))
+            data[, variables] <- as.data.frame(lapply(data[, variables], NAtoLvl, na.lab = na.lab))
         } else {
-            data[, variables] <- NAtoLvl(data[, variables])
+            data[, variables] <- NAtoLvl(data[, variables], na.lab)
+        }
+    }
+
+    if (!is.null(group)) {
+        if(!is.factor(data[, group]))
+            stop(sQuote("group"), " must be a factor variable")
+        if (group %in% variables) {
+            idx <- variables != group
+            variables <- variables[idx]
+            labels <- labels[idx]
+        }
+        ## remove observations with missing group:
+        if (any(is.na(data[, group]))) {
+            warning("Removed observations with missing group")
+            data <- data[!is.na(data[, group]), ]
+        }
+        group_var <- data[, group]
+
+        cl <- match.call()
+        cl[["group"]] <- NULL
+        ## modify call to obtain results for grouped data
+        print_single_tabs <- function(level, data, grp_var) {
+            dat <- data[grp_var == level, ]
+            ## make sure no fatcor level is dropped
+            dat <- keep_levels(dat, data)
+            cl[["data"]] <- dat
+            ## test is not needed in single tables
+            cl[["test"]] <- FALSE
+            if (!is.null(label))
+                cl[["label"]] <- paste(label, level, sep = "_")
+            ## re-evaluate modified call
+            eval(cl)
+        }
+        res <- lapply(levels(group_var), print_single_tabs,
+                      data = data, grp_var = group_var)
+
+        # if (length(res) != 2)
+        #     stop("Combining more than 2 groups not yet implemented")
+        # tab <- cbind(res[[1]], res[[2]][, -c(1:2)])
+
+        res[-1] <- lapply(res[-1], function(x) x[, -c(1:2)])
+        tab <- do.call("cbind", res)
+
+        if (!is.character(test) && test)
+            test <- "fisher.test"
+
+        if (all(is.character(test))) {
+            if (length(test) == 1)
+                test <- rep(test, length(variables))
+            testdat <- as.matrix(tab[, grep("N", colnames(tab))])
+            pval <- rep(NA, length(variables))
+            for (i in 1:length(variables)) {
+                test_tab <- testdat[tab$variable == unique(tab$variable)[i] & tab$Level != na.lab, ]
+                pval[i] <- eval(call(test[i], test_tab))$p.value
+            }
+            ## make sure rounding is to digits.pval digits
+            pval <- format.pval(round(pval, digits = digits.pval),
+                                eps = smallest.pval)
+            ## make sure not to drop trailing zeros
+            pval2 <- suppressWarnings(as.numeric(pval))
+            pval[is.na(pval2)] <- sprintf(paste0("%0.", digits.pval, "f"),
+                                          pval2[is.na(pval2)])
+            tab$blank_p <- ""
+            tab$p.value[!duplicated(tab$variable)] <- pval
+        }
+
+        attr(tab, "latex.table.options") <- attr(res[[1]], "latex.table.options")
+        attr(tab, "group_labels") <- paste(group, levels(group_var), sep = ": ")
+        class(tab) <- c("table.fac", "data.frame")
+        return(tab)
+    }
+
+    ## test not sensible
+    if (test || is.character(test))
+        warning(sQuote("test"), " is ignored if no ", sQuote("group"), " is given")
+
+    table <- match.arg(table)
+    if (is.null(labels)) {
+        labels <- variables
+    } else {
+        if (is.logical(labels) && labels) {
+            labels <- labels(data, which = variables)
+        } else {
+            if (length(variables) != length(labels))
+                stop(sQuote("variables"), " and ", sQuote("labels"),
+                     " must have the same length")
         }
     }
 
@@ -226,15 +292,10 @@ latex.table.fac <- function(data, variables = names(data),
 
     ## setup results object
     stats <- data.frame(variable = var_labels, Level = lvls, blank = "",
-                        N = NA, blank_2 = "",
-                        Fraction = NA, CumSum = NA, blank_3 = "",
-                        Fraction_2 = NA, CumSum_2 = NA,
+                        N = NA, Fraction = NA, CumSum = NA,
                         stringsAsFactors = FALSE)
-    if (!show.NAs) {
-            stats$Fraction_2 <- NULL
-            stats$CumSum_2 <- NULL
-            stats$blank_2 <- NULL
-            stats$blank_3 <- NULL
+    if (!cumulative) {
+        stats$CumSum <- NULL
     }
     rownames(stats) <- NULL
 
@@ -243,17 +304,24 @@ latex.table.fac <- function(data, variables = names(data),
         notna <- sum(!is.na(data[, var2[i]]))
         stats$N[i] <- sum(data[, var2[i]] == lvls[i], na.rm = TRUE)
         stats$Fraction[i] <- round(stats$N[i]/notna, digits = digits)
-        stats$CumSum[i] <- sum(stats$Fraction[1:i][var2[1:i] == var2[i]])
-        if (show.NAs && lvls[i] != na.lab) {
-            notna_2 <- sum(data[, var2[i]] != na.lab)
-            stats$Fraction_2[i] <- round(stats$N[i]/notna_2, digits = digits)
-            stats$CumSum_2[i] <- sum(stats$Fraction_2[1:i][var2[1:i] == var2[i]])
-        }
+        if (cumulative)
+            stats$CumSum[i] <- sum(stats$Fraction[1:i][var2[1:i] == var2[i]])
+    }
+    if (percent) {
+        stats$Fraction <- sprintf(paste0("%3.", digits - 2,"f"),
+                                  stats$Fraction * 100)
+        if (cumulative)
+            stats$CumSum <- sprintf(paste0("%3.", digits - 2,"f"),
+                                    stats$CumSum * 100)
+    } else {
+        stats$Fraction <- sprintf(paste0("%1.", digits,"f"), stats$Fraction)
+        if (cumulative)
+            stats$CumSum <- sprintf(paste0("%1.", digits,"f"), stats$CumSum)
     }
     add_options(stats, table = table, align = align, caption = caption,
                 label = label, floating = floating, center = center,
                 sep = sep, sanitize = sanitize, colnames = colnames,
-                class = "table.fac")
+                percent = percent, class = "table.fac")
 }
 
 ################################################################################
@@ -355,7 +423,6 @@ print.table.cont <- function(x,
                 rules = rules, header = NULL)
 }
 
-
 ################################################################################
 ## Helper for latex.table.fac
 print.table.fac <- function(x,
@@ -376,16 +443,14 @@ print.table.fac <- function(x,
     tmp[duplicated(tmp)] <- ""
     tab$variable <- tmp
 
-    idx <- grep("blank", names(tab))
-    if (length(idx) == 1) {
-        rules <- paste("  \\cmidrule{2-2} \\cmidrule{4-", ncol(tab), "}\n", sep = "")
-    } else {
-        rules <- paste("  \\cmidrule{2-2}",
-                       "\\cmidrule{", idx[1] + 1, "-", idx[2] - 1, "} ",
-                       "\\cmidrule{", idx[2] + 1, "-", idx[3] - 1, "} ",
-                       "\\cmidrule{", idx[3] + 1, "-", length(names(tab)), "}\n",
-                       sep = "")
+    ## define rules
+    idx <- c(grep("blank", names(tab)), length(names(tab)) + 1)
+    rules <- "  \\cmidrule{2-2} "
+    for (i in 1:(length(idx) - 1)) {
+        rules <- paste0(rules, "\\cmidrule{", idx[i] + 1, "-", idx[i+1] - 1, "} ")
     }
+    rules <- paste0(rules, "\n")
+
     if (is.null(align))
         align <- paste("ll",
                        paste(rep("r", length(names(tab)) - 2), collapse = ""),
@@ -396,24 +461,39 @@ print.table.fac <- function(x,
         colNames <- names(tab)
         ## blank doesn't need to be specified in colnames
         if (sum(nms <- !grepl("blank", colNames)) != length(colnames))
-            stop(sQuote("colnames"), " has wrong length")
+            stop(sQuote("colnames"), " has wrong length (should be", sum(nms), ")")
         colNames[nms] <- colnames
     } else {
         colNames <- names(tab)
-        colNames[colNames == "Fraction"] <- "\\%"
-        colNames[colNames == "CumSum"] <- "$\\sum$ \\%"
-        colNames[colNames == "Fraction_2"] <- "\\%"
-        colNames[colNames == "CumSum_2"] <- "$\\sum$ \\%"
+        if (get_options(x, "percent")) {
+            colNames[grepl("Fraction", colNames)] <- "\\%"
+            colNames[grepl("CumSum", colNames)] <- "$\\sum$ \\%"
+        } else {
+            colNames[grepl("CumSum", colNames)] <- "$\\sum$"
+        }
         colNames[1] <- " "
-        if (ncol(tab) == 10) {
-            header <- paste(paste(rep("&", 5), collapse =" "),
-                            "\\multicolumn{2}{c}{(incl. Missings)}  & & \\multicolumn{2}{c}{(w/o Missings)} \\\\")
+
+        header <- ""
+        ## if more than one blank add group label
+        if (!is.null(attr(tab, "group_labels"))) {
+            lab <- attr(tab, "group_labels")
+            ## if p.values exist last multicolumn
+            ## should not include this column
+            if (colNames[length(colNames)] == "p.value")
+                idx <- idx[-length(idx)]
+            header <- paste(rep("&", idx[1]), collapse = " ")
+            for (i in 1:(length(idx) - 1)) {
+                header <- paste0(header, "\\multicolumn{", idx[i+1] - idx[i] - 1, "}{c}{", lab[i],"}")
+                if (i != length(idx) - 1)
+                    header <- paste0(header, " & & ")
+            }
+            if (colNames[length(colNames)] == "p.value")
+                header <- paste0(header, " &  & ")
+            header <- paste0(header, "\\\\\n")
         }
     }
     colNames[grep("blank", colNames)] <- " "
 
-    if (!exists("header"))
-        header <- NULL
     ## start printing
     print_table(tab = tab, table = table, floating = floating,
                 caption = caption, label = label, center = center,
@@ -516,8 +596,4 @@ print_table <- function(tab, table, floating, caption, label,
     ## if captionof is used end minipage
     if (!floating && table != "longtable" && !is.null(caption))
         cat("\\end{minipage}\n")
-}
-
-print.table.list <- function(x, ...) {
-    lapply(x, print)
 }
