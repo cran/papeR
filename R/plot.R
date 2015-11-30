@@ -1,7 +1,10 @@
-plot.labeled.data.frame <- function(x, variables = names(x),
-                                    labels = TRUE, by = NULL,
-                                    with = NULL, regression.line = TRUE,
-                                    line.col = "red", ...) {
+## plot function for (labeled) data frames
+
+## now specify modified plot function for data frames
+plot.ldf <- function(x, variables = names(x),
+                     labels = TRUE, by = NULL,
+                     with = NULL, regression.line = TRUE,
+                     line.col = "red", ...) {
 
     if (is.numeric(variables)) {
         variables <- names(x)[variables]
@@ -65,7 +68,8 @@ plot.labeled.data.frame <- function(x, variables = names(x),
             boxplot(x[, i], main = variables[i], ylab = labels[i], ...)
         }
         for (i in which.fac) {
-            barplot(table(x[, i]), main = variables[i], ylab = labels[i], ...)
+            barplot(table(x[, i]),
+                    main = variables[i], ylab = labels[i], ...)
         }
     } else {
         grp_label <- ifelse(!is.null(grp_label), grp_label, by)
@@ -79,15 +83,15 @@ plot.labeled.data.frame <- function(x, variables = names(x),
             for (i in which.fac) {
                 cc <- complete.cases(x[, i], by_var)
                 tmp_by_var <- by_var[cc, drop = TRUE]
-                plot(x[cc, i] ~ tmp_by_var, main = variables[i],
+                plot(tmp_by_var, x[cc, i], main = variables[i],
                      ylab = labels[i], xlab = grp_label, ...)
             }
         } else {  ## i.e. is.numeric(by_var)
             for (i in which.num) {
                 cc <- complete.cases(x[, i], by_var)
                 tmp_by_var <- by_var[cc, drop = TRUE]
-                plot(tmp_by_var ~ x[cc, i], main = variables[i],
-                     xlab = labels[i], ylab = grp_label, ...)
+                graphics::plot.default(x[cc, i], tmp_by_var, main = variables[i],
+                                       xlab = labels[i], ylab = grp_label, ...)
                 if (regression.line)
                     abline(lm(tmp_by_var ~ x[cc, i]), col = line.col)
             }

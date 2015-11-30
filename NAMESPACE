@@ -1,40 +1,34 @@
-importFrom(car, Anova)
-importFrom(utils, toLatex)
-importFrom(utils, toBibtex)
-importFrom(gmodels, ci)
+importFrom("car", "Anova")
+importFrom("utils", "citation", "sessionInfo", "toLatex", "toBibtex")
+importFrom("gmodels", "ci")
+importFrom("graphics", "abline", "barplot", "boxplot", "plot")
+importFrom("stats", "as.formula", "coef", "coefficients", "complete.cases",
+           "fivenum", "lm", "qnorm", "qt", "sd", "symnum", "vcov")
+import(xtable)
 
-export(as.labeled.data.frame,
-       is.labeled.data.frame,
-       as.labelled.data.frame,
-       is.labelled.data.frame,
-       plot.labeled.data.frame,
-       cbind.labeled.data.frame,
-       rbind.labeled.data.frame,
-       subset.labeled.data.frame,
-       get_options,
+export(as.ldf,
+       is.ldf,
+       convert.labels,
+       get_option,
        labels.data.frame,
        latex.table.cont,
        latex.table.fac,
-       print.table.cont,
-       print.table.fac,
+       plot.ldf,
        prettify,
        prettifyPValue,
+       summarize, summarise,
+       summarize_numeric, summarize_factor,
        toLatex,
        toLatex.character,
-       "labels<-",
-       get_options)
+       "labels<-")
 
 S3method(Anova, lme)
 S3method(confint, lme)
 S3method(confint, mer)
-S3method(as.labeled.data.frame, data.frame)
-S3method(labels, default)
+S3method(as.ldf, data.frame)
+S3method(labels, lv)
 S3method(labels, data.frame)
-S3method("[", labeled.data.frame)
-S3method(subset, labeled.data.frame)
-S3method(cbind, labeled.data.frame)
-S3method(rbind, labeled.data.frame)
-S3method(plot, labeled.data.frame)
+S3method(plot, ldf)
 S3method(prettify, summary.lm)
 S3method(prettify, summary.glm)
 S3method(prettify, summary.coxph)
@@ -45,8 +39,10 @@ S3method(prettify, anova)
 S3method(prettify, data.frame)
 S3method(mySapply, default)
 S3method(mySapply, data.frame)
-S3method(print, table.cont)
-S3method(print, table.fac)
+S3method(xtable, summary)
+S3method(print, LatexBibtex)
+S3method(print, summary)
+S3method(print, xtable.summary)
 S3method(toLatex, default)
 S3method(toLatex, character)
 S3method(toLatex, sessionInfo)

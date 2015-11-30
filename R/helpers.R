@@ -22,14 +22,14 @@ Anova.lme <- function(mod, type = c("marginal", "sequential"), ...) {
 
 ################################################################################
 # add and get options from tables
-add_options <- function(object, ..., class) {
-    attr(object, "latex.table.options") <- list(...)
+set_options <- function(object, ..., class) {
+    attr(object, "table.options") <- list(...)
     class(object) <- c(class, class(object))
     object
 }
 
-get_options <- function(object, name) {
-    attr(object, "latex.table.options")[[name]]
+get_option <- function(object, name) {
+    attr(object, "table.options")[[name]]
 }
 
 
@@ -61,7 +61,7 @@ confint.lme <- function (object, parm, level = 0.95, ...) {
     ci
 }
 
-
+## nocov start
 ## function for lme4 version < 1.0 only
 confint.mer <- function (object, parm, level = 0.95,
                          simulate = c("ifneeded", TRUE, FALSE),
@@ -103,6 +103,7 @@ confint.mer <- function (object, parm, level = 0.95,
     ci[] <- cf[parm] + ses %o% fac
     ci
 }
+## nocov end
 
 
 refit_model <- function(cl, ENV = globalenv(), summary, .call = "prettify") {
@@ -121,7 +122,7 @@ refit_model <- function(cl, ENV = globalenv(), summary, .call = "prettify") {
     }
     mod <- eval(cl, envir = ENV)
     ## needed to really call summary from lme4 (< 1.0)
-    if (class(mod) == "mer") {
+    if (inherits(mod, "mer")) {
         # ae <- all.equal(lme4::summary(mod), summary)
         ae <- all.equal(summary(mod), summary)
     } else {
@@ -154,7 +155,7 @@ format.perc <- function(probs, digits) {
 
 
 ## Function that makes NAs to a new level with given label
-NAtoLvl <- function(x, na.lab){
+NAtoLvl <- function(x, na.lab) {
     if (any(is.na(x))) {
         lvls <- levels(x)
         x <- as.character(x)
@@ -173,3 +174,29 @@ keep_levels <- function(sub_data, complete_data) {
     }
     return(sub_data)
 }
+
+
+## check which in labels() function
+check_which <- function(which, data, what) {
+    if (is.null(which))
+        which <- 1:ncol(data)
+
+    if (is.numeric(which) && (any(which > ncol(data)) ||
+                              any(which < 1) ||
+                              !all(which %% 1 == 0)))
+        stop("One cannot ", what, " labels for none-existing variables",
+             call. = FALSE)
+
+    if (is.character(which) && !all(which %in% colnames(data))) {
+        txt <- paste0("One cannot ", what, " labels for none-existing variables\n",
+                     "  Variables not found in data set:\n\t",
+                     paste(which[!(which %in% colnames(data))],
+                           collapse = "\n\t"))
+        stop(txt, call. = FALSE)
+    }
+    return(which)
+}
+
+## get labels from a data set
+get_labels <- function(x)
+    attr(x, "variable.label")

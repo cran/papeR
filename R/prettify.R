@@ -16,14 +16,16 @@ prettify.summary.lm <- function(object, labels = NULL, sep = ": ", extra.column 
 
     ## compute confidence interval or extract it from confint
     if (is.logical(confint)) {
-        if (confint)
+        if (confint) {
             mod <- refit_model(cl = object$call,
                                ENV = attr(object$terms, ".Environment"),
                                summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-        } else {
-            CI <- confint(mod, level = level)
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level)
+            }
         }
     } else {
         CI <- confint
@@ -67,14 +69,16 @@ prettify.summary.glm <- function(object, labels = NULL, sep = ": ", extra.column
 
     ## compute confidence interval or extract it from confint
     if (is.logical(confint)) {
-        if (confint)
+        if (confint) {
             mod <- refit_model(cl = object$call,
                                ENV = attr(object$terms, ".Environment"),
                                summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-        } else {
-            CI <- confint(mod, level = level)
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level)
+            }
         }
     } else {
         CI <- confint
@@ -128,18 +132,24 @@ prettify.summary.coxph <- function(object, labels = NULL, sep = ": ", extra.colu
     if (!HR)
         res$"exp(coef)" <- NULL
 
+    if (is.null(labels) || (is.logical(confint) && confint)) {
+        mod <- refit_model(cl = object$call, ENV = env,
+                           summary = object, .call = .call)
+    }
+    if (is.null(labels) && is.logical(mod))
+        stop("Model can't be refitted and no labels are specified. ",
+             "Please specify labels.")
+
+
     ## compute confidence interval or extract it from confint
-    if (is.logical(confint) || is.null(labels)) {
-        if (is.null(labels) || confint)
-            mod <- refit_model(cl = object$call, ENV = env,
-                               summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-            if (is.null(labels))
-                stop("Model can't be refitted and no labels are specified. ",
-                     "Please specify labels.")
-        } else {
-            CI <- confint(mod, level = level)
+    if (is.logical(confint)) {
+        if (confint) {
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level)
+            }
         }
     } else {
         CI <- confint
@@ -195,14 +205,16 @@ prettify.summary.lme <- function(object, labels = NULL, sep = ": ", extra.column
 
     ## compute confidence interval or extract it from confint
     if (is.logical(confint)) {
-        if (confint)
+        if (confint) {
             mod <- refit_model(cl = object$call,
                                ENV = attr(object$terms, ".Environment"),
                                summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-        } else {
-            CI <- confint(mod, level = level)
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level)
+            }
         }
     } else {
         CI <- confint
@@ -243,19 +255,24 @@ prettify.summary.merMod <- function(object,
     .call <- match.call()
     res <- as.data.frame(coefficients(object))
 
+    if (is.null(labels) || (is.logical(confint) && confint)) {
+        mod <- refit_model(cl = object$call, ENV = env,
+                           summary = object, .call = .call)
+    }
+    if (is.null(labels) && is.logical(mod))
+        stop("Model can't be refitted and no labels are specified. ",
+             "Please specify labels.")
+
     ## compute confidence interval or extract it from confint
-    if (is.logical(confint) || is.null(labels)) {
-        if (is.null(labels) ||confint)
-            mod <- refit_model(cl = object$call, ENV = env,
-                               summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-            if (is.null(labels))
-                stop("Model can't be refitted and no labels are specified. ",
-                     "Please specify labels.")
-        } else {
-            CI <- confint(mod, level = level, method = method, nsim = B,
-                          ...)[rownames(res), ]
+    if (is.logical(confint)) {
+        if (confint) {
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level, method = method, nsim = B,
+                              ...)[rownames(res), ]
+            }
         }
     } else {
         CI <- confint
@@ -287,6 +304,7 @@ prettify.summary.merMod <- function(object,
              scientific = scientific, signif.stars = signif.stars, ...)
 }
 
+## nocov start (exclude this function from test coverage)
 ## function for lme4 version < 1.0 only
 prettify.summary.mer <- function(object,
                      labels = NULL, sep = ": ", extra.column = FALSE,
@@ -300,14 +318,16 @@ prettify.summary.mer <- function(object,
 
     ## compute confidence interval or extract it from confint
     if (is.logical(confint)) {
-        if (confint)
+        if (confint) {
             mod <- refit_model(cl = object@call,
                                ENV = attr(attr(object@frame, "terms"), ".Environment"),
                                summary = object, .call = .call)
-        if (is.logical(mod)) {
-            confint <- mod
-        } else {
-            CI <- confint(mod, level = level, simulate = simulate, B = B, ...)
+            if (is.logical(mod)) {
+                ## model could not be refitted, i.e., mod == FALSE
+                confint <- mod
+            } else {
+                CI <- confint(mod, level = level, simulate = simulate, B = B, ...)
+            }
         }
     } else {
         CI <- confint
@@ -336,6 +356,7 @@ prettify.summary.mer <- function(object,
              smallest.pval = smallest.pval, digits = digits,
              scientific = scientific, signif.stars = signif.stars, ...)
 }
+## nocov end
 
 prettify.anova <- function(object, labels = NULL,
                            smallest.pval = 0.001, digits = NULL, scientific = FALSE,
@@ -354,8 +375,11 @@ prettify.anova <- function(object, labels = NULL,
 
     if (!is.null(labels)) {
         idx <- res[, 1] %in% names(labels)
-        res[idx, 1] <- labels[idx]
+        if (any(idx == TRUE))
+            res[, 1] <- as.character(res[, 1])
+        res[idx, 1] <- labels[res[idx, 1]]
     }
+
     res <- res[!apply(res, 1, function(x) any(is.na(x))), ]
     res
 }
@@ -404,14 +428,20 @@ prettify.data.frame <- function(object, labels = NULL, sep = ": ", extra.column 
             if (!length(idx) == 0){
                 ## Is there a factor level?
                 if (any(grepl(paste("^",names(labels)[i], "$", sep = ""), nms[idx]))) {
-                    new_nms[idx] <- gsub(names(labels)[i],
-                                         labels[i], nms[idx])
+                    ## if not replace variable names with labels
+                    new_nms[idx] <- gsub(names(labels)[i], labels[i], nms[idx])
                 } else {
+                    ## if factors are present separate variable name and factor
+                    ## level
                     if (extra.column) {
-                        spaces <- sapply(1:length(idx), function(i) paste(rep(" ", i), collapse = ""))
+                        ## replace variable name with label and discard
+                        ## everything else
                         new_nms[idx] <- gsub(paste("^",names(labels)[i], "(.*)", sep = ""),
-                                             paste(labels[i], spaces, sep = ""),
+                                             labels[i],
                                              nms[idx])
+                        ## remove duplicate variable labels
+                        new_nms[idx][duplicated(new_nms[idx])] <- ""
+                        ## extract variable levels
                         object[idx, 2] <- gsub(paste("^",names(labels)[i], "(.*)", sep = ""),
                                                "\\1",
                                                nms[idx])
@@ -432,6 +462,7 @@ prettify.data.frame <- function(object, labels = NULL, sep = ": ", extra.column 
                              signif.stars, ...)
 
     object
+
 }
 
 
