@@ -39,7 +39,7 @@ latex.table.cont <- function(...,
           floating = floating, latex.environments = ifelse(center, "center", c()),
           tabular.environment = table)
     message("  This function exists for backward compatibility.\n  Consider using ",
-            sQuote('summarize(..., type = "continuous")'), " instead.")
+            sQuote('xtable(summarize(..., type = "numeric"))'), " instead.")
 }
 
 latex.table.fac <- function(...,
@@ -53,7 +53,7 @@ latex.table.fac <- function(...,
           floating = floating, latex.environments = ifelse(center, "center", c()),
           tabular.environment = table)
     message("  This function exists for backward compatibility.\n  Consider using ",
-            sQuote('summarize(..., type = "continuous")'), " instead.")
+            sQuote('xtable(summarize(..., type = "factor"))'), " instead.")
 
 }
 ################################################################################
@@ -99,11 +99,16 @@ summarize_numeric <- function(data, variables = names(data),
         group_var <- data[, group]
     }
     ## get numerical variables
-    num <- mySapply(data[, variables], is.numeric)
+    num <- mySapply(data[, variables], function(x)
+        is.numeric(x) || inherits(x, "Date"))
+    date <- mySapply(data[, variables], function(x)
+        inherits(x, "Date"))
+
     ## drop missings
     if (drop) {
         compl.missing <- mySapply(data[, variables], function(x) all(is.na(x)))
         num <- num & !compl.missing
+        date <- date & !compl.missing
     }
 
     ## if not any is TRUE (i.e. all are FALSE):
@@ -136,29 +141,21 @@ summarize_numeric <- function(data, variables = names(data),
         sums$blank <- NULL
     }
 
-    myData <- data
     ## compute statistics
     for (i in 1:nrow(sums)) {
         if (!is.null(group)) {
-            myData <- data[group_var == sums$group[i], ]
-        }
-        sums$N[i] <- sum(!is.na(myData[, sums$var[i]]))
-        sums$Missing[i] <- sum(is.na(myData[, sums$var[i]]))
-        sums$Mean[i] <- round(mean(myData[, sums$var[i]], na.rm=TRUE),
-                              digits = digits)
-        sums$SD[i] <- round(sd(myData[, sums$var[i]],
-                               na.rm=TRUE), digits = digits)
-        if (incl_outliers) {
-            Q <- round(fivenum(myData[, sums$var[i]]), digits = digits)
+            idx <- c(4:5, 7:8, 10:14)
+            sums[i, idx] <- compute_summary(data[, sums$var[i]],
+                                            group_var = group_var,
+                                            group = sums$group[i],
+                                            incl_outliers = incl_outliers,
+                                            digits = digits)
         } else {
-            Q <- round(c(boxplot(myData[, sums$var[i]], plot = FALSE)$stats),
-                       digits = digits)
+            idx <- c(2:3, 5:6, 8:12)
+            sums[i, idx] <- compute_summary(data[, sums$var[i]],
+                                            incl_outliers = incl_outliers,
+                                            digits = digits)
         }
-        sums$Min[i] <- Q[1]
-        sums$Q1[i]  <- Q[2]
-        sums$Median[i] <- Q[3]
-        sums$Q3[i] <- Q[4]
-        sums$Max[i] <- Q[5]
     }
 
     if (!is.null(group)) {
@@ -201,6 +198,44 @@ summarize_numeric <- function(data, variables = names(data),
                         count = count, mean_sd = mean_sd, quantiles = quantiles,
                         colnames = colnames, class = "summarize.numeric")
     prettify(sums)
+}
+
+compute_summary <- function(data, ...)
+    UseMethod("compute_summary")
+
+compute_summary.default <- function(data, group_var = NULL, group = NULL,
+                                    incl_outliers, digits) {
+    if (!is.null(group)) {
+        data <- data[group_var == group]
+    }
+
+    res <- data.frame(N=NA, Missing = NA, Mean=NA, SD=NA,
+                      Min=NA, Q1=NA, Median=NA, Q3=NA, Max=NA)
+
+    res["N"] <- sum(!is.na(data))
+    res["Missing"] <- sum(is.na(data))
+    res["Mean"] <- round(mean(data, na.rm=TRUE), digits = digits)
+    res["SD"] <- round(sd(data, na.rm=TRUE), digits = digits)
+    if (incl_outliers) {
+        Q <- round(fivenum(data), digits = digits)
+    } else {
+        Q <- round(c(boxplot(data, plot = FALSE)$stats), digits = digits)
+    }
+    res["Min"] <- Q[1]
+    res["Q1"]  <- Q[2]
+    res["Median"] <- Q[3]
+    res["Q3"] <- Q[4]
+    res["Max"] <- Q[5]
+    return(res)
+}
+
+compute_summary.Date <- function(data, group_var = NULL, group = NULL,
+                                 incl_outliers, digits) {
+    res <- compute_summary.default(unclass(data), group_var, group, incl_outliers,
+                                   digits)
+    for (i in c("Mean", "Min", "Q1", "Median", "Q3", "Max"))
+        class(res[, i]) <- oldClass(data)
+    return(res)
 }
 
 ################################################################################
@@ -563,12 +598,15 @@ xtable.summary <- function(x, caption = NULL, label = NULL, align = NULL,
 print.xtable.summary <- function(x, rules = NULL, header = NULL,
                                  caption.placement = getOption("xtable.caption.placement", "top"),
                                  hline.after = getOption("xtable.hline.after", NULL),
+                                 include.rownames = FALSE,
                                  add.to.row = getOption("xtable.add.to.row", NULL),
-                                 include.rownames = getOption("xtable.include.rownames", FALSE),
                                  booktabs = getOption("xtable.booktabs", TRUE),
                                  sanitize.text.function = get_option(x, "sanitize"),
+                                 math.style.negative = getOption("xtable.math.style.negative", TRUE),
+                                 math.style.exponents = getOption("xtable.math.style.exponents", TRUE),
                                  tabular.environment = getOption("xtable.tabular.environment", "tabular"),
                                  floating = getOption("xtable.floating", FALSE),
+                                 latex.environments = getOption("xtable.latex.environments", c("center")),
                                  ...) {
 
     ## extract rules and headers from object
@@ -586,6 +624,11 @@ print.xtable.summary <- function(x, rules = NULL, header = NULL,
         cat("%% Output requires \\usepackage{booktabs}.\n")
     if (tabular.environment == "longtable")
         cat("%% Output requires \\usepackage{longtable}.\n")
+
+    ## use centering even if not a float
+    if (!floating && latex.environments == "center") {
+        cat("\\begin{center}\n")
+    }
 
     ## If caption is given and we don't use a floating environment,
     ## we need to make use of the LaTeX package capt-of
@@ -621,13 +664,19 @@ print.xtable.summary <- function(x, rules = NULL, header = NULL,
                                        midrules, "\\bottomrule\n"))
     }
 
+    if (include.rownames)
+        warning(sQuote("include.rownames = TRUE"),
+                " is ignored.")
+
     print.xtable(x,
                  caption.placement = caption.placement,
                  hline.after = hline.after,
-                 include.rownames = include.rownames,
+                 include.rownames = FALSE,
                  booktabs = booktabs,
                  add.to.row = add.to.row,
                  sanitize.text.function = sanitize.text.function,
+                 math.style.negative = math.style.negative,
+                 math.style.exponents = math.style.exponents,
                  tabular.environment = tabular.environment,
                  floating = floating,
                  ...)
@@ -635,7 +684,11 @@ print.xtable.summary <- function(x, rules = NULL, header = NULL,
     if (!is.null(caption(x)) && !floating &&
          tabular.environment != "longtable")
         cat("\\end{minipage}\n")
-    if (!floating  && tabular.environment != "longtable")
+    ## use centering even if not a float
+    if (!floating && latex.environments == "center")
+        cat("\\end{center}\n")
+    if (!floating && tabular.environment != "longtable"
+        && latex.environments != "center")
         cat("\\newline\n")
 }
 

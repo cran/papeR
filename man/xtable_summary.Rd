@@ -17,12 +17,15 @@
 \method{print}{xtable.summary}(x, rules = NULL, header = NULL,
       caption.placement = getOption("xtable.caption.placement", "top"),
       hline.after = getOption("xtable.hline.after", NULL),
+      include.rownames = FALSE,
       add.to.row = getOption("xtable.add.to.row", NULL),
-      include.rownames = getOption("xtable.include.rownames", FALSE),
       booktabs = getOption("xtable.booktabs", TRUE),
       sanitize.text.function = get_option(x, "sanitize"),
+      math.style.negative = getOption("xtable.math.style.negative", TRUE),
+      math.style.exponents = getOption("xtable.math.style.exponents", TRUE),
       tabular.environment = getOption("xtable.tabular.environment", "tabular"),
       floating = getOption("xtable.floating", FALSE),
+      latex.environments = getOption("xtable.latex.environments", c("center")),
       ...)
 
 }
@@ -85,9 +88,7 @@
     each variable.
   }
   \item{include.rownames}{
-    logical. If \code{TRUE} the rows names are printed.
-    Default value is \code{FALSE}. Note that the standard default of
-    \code{\link[xtable]{print.xtable}} is \code{TRUE}.
+    logical. Always set to \code{FALSE}.
   }
   \item{booktabs}{
     logical. If \code{TRUE} (default), the \code{toprule},
@@ -103,6 +104,17 @@
     used to sanitize the text. For more options see
     \code{\link[xtable]{print.xtable}}.
   }
+  \item{math.style.negative}{
+    logical. If \code{TRUE} (default) the negative sign is wrapped in
+    dollar signs for LaTeX tables. Note that the standard default of
+    \code{\link[xtable]{print.xtable}} is \code{FALSE}.
+  }
+  \item{math.style.exponents}{
+    logical. If \code{TRUE} (default) scientific numers are set as
+    exponents. See \code{\link[xtable]{print.xtable}} for details.
+    Note that the standard default of \code{\link[xtable]{print.xtable}}
+    is \code{FALSE}.
+  }
   \item{tabular.environment}{
     character string. Per default \code{"tabular"} is used. For long
     tables that span over more than one page, one can use
@@ -114,6 +126,12 @@
     environment. Note that the standard default of
     \code{\link[xtable]{print.xtable}} is \code{TRUE}. See there for
     details.
+  }
+  \item{latex.environments}{
+    character string. Per default \code{"center"} is used. In contrast
+    to the default behavior of \code{\link[xtable]{print.xtable}},
+    tables are also centered if no floating environment is used. For
+    details and more options see \code{\link[xtable]{print.xtable}}.
   }
   \item{...}{
     additional arguments passed to \code{\link[xtable]{xtable}} or
@@ -140,7 +158,7 @@
   For details see \code{\link[xtable]{xtable}} and
   \code{\link[xtable]{print.xtable}}.
 
-  \code{link{summarize}}, \code{\link{get_option}}
+  \code{\link{summarize}}, \code{\link{get_option}}
 }
 \examples{
 if (require("nlme")) {
