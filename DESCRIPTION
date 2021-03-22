@@ -1,7 +1,7 @@
 Package: papeR
 Title: A Toolbox for Writing Pretty Papers and Reports
-Version: 1.0-4
-Date: 2019-01-03
+Version: 1.0-5
+Date: 2021-03-19
 Author: Benjamin Hofner, with contributions by many others (see inst/CONTRIBUTIONS)
 Maintainer: Benjamin Hofner <benjamin.hofner@pei.de>
 Description: A toolbox for writing 'knitr', 'Sweave' or other 'LaTeX'- or 'markdown'-based
@@ -11,12 +11,12 @@ Enhances: lme4, survival
 Imports: utils, gmodels, graphics, stats
 Suggests: nlme, knitr, rmarkdown, testthat (>= 0.10.0), foreign
 License: GPL-2
-URL: http://github.com/hofnerb/papeR
+URL: https://github.com/hofnerb/papeR
 Copyright: See inst/COPYRIGHTS.
 VignetteBuilder: knitr
 Collate: 'helpers.R' 'labels.R' 'summarize.R' 'plot.R' 'prettify.R'
         'toLatex.R'
 NeedsCompilation: no
-Packaged: 2019-01-03 12:49:35 UTC; hofbe
+Packaged: 2021-03-22 13:16:08 UTC; Benjamin (PEI)
 Repository: CRAN
-Date/Publication: 2019-01-03 14:30:02 UTC
+Date/Publication: 2021-03-22 22:30:11 UTC
